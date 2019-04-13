@@ -37,34 +37,26 @@
 		id: 'mapbox.streets'
 	}).addTo(mymap);
 
-	L.marker([51.5, -0.09]).addTo(mymap)
-		.bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
 
-	L.circle([51.508, -0.11], 500, {
-		color: 'red',
-		fillColor: '#f03',
-		fillOpacity: 0.5
-	}).addTo(mymap).bindPopup("I am a circle.");
+	// takes a L.LatLng
+	// returns Bounds [L.LatLng, L.LatLng]
+	//   with an offset based on visual pixels
+	function dynamicBounds(latlng) {
+		var originLatLng = latlng;
+		var originPoint = mymap.project(originLatLng)
+		var cardDimensionsAsPx = 30;
+		var targetPoint = L.point(originPoint.x + cardDimensionsAsPx, originPoint.y + cardDimensionsAsPx);
+		var targetLatLng = mymap.unproject(targetPoint, mymap.getZoom());
+		var bounds = [originLatLng, targetLatLng];
+		return bounds;
+	}
 
-	L.polygon([
-		[51.509, -0.08],
-		[51.503, -0.06],
-		[51.51, -0.047]
-	]).addTo(mymap).bindPopup("I am a polygon.");
-
-	L.circle([51.508, -0.11], 500, {
-		color: 'red',
-		fillColor: '#f03',
-		fillOpacity: 0.5
-	}).addTo(mymap).bindPopup("I am a circle.");
-
-	var bounds = [[54.559322, -5.767822], [56.1210604, -3.021240]];
-	// create an orange rectangle
+	// Create an orange rectangle in the center of the map
+	var xpoint = mymap.getCenter();
+	var bounds = dynamicBounds(xpoint);
 	var box1 = L.rectangle(bounds, {color: "#ff7800", weight: 1}).addTo(mymap);
 
-
 	var popup = L.popup();
-
 	function onMapClick(e) {
 		popup
 			.setLatLng(e.latlng)
@@ -77,15 +69,6 @@
 		clickHandler(e);
 	})
 
-// 	var latlngs = [
-//     [45.51, -122.68],
-//     [37.77, -122.43],
-//     [34.04, -118.2]
-// ];
-// 	var polyline = L.polyline(latlngs, {color: 'red'}).addTo(map);
-// 	// zoom the map to the polyline
-// 	map.fitBounds(polyline.getBounds());
-
 	function clickHandler(e) {
 		var lat = e.latlng.lat;
 		var lng = e.latlng.lng;
@@ -95,17 +78,17 @@
 
 	// Draw a line between this rectangle and Box1
 	function drawLineToBox1(box) {
-		// draw a polyline between box1 and box
+		// draw a polyline between the centers of box1 and box
 			var latlngs = [
-		    [box.getLatLngs()[0][0].lat, box.getLatLngs()[0][0].lng],
-		    [box1.getLatLngs()[0][0].lat, box1.getLatLngs()[0][0].lng],
-		];
-		var polyline = L.polyline(latlngs, {color: 'red'}).addTo(mymap);
+				box.getCenter(),
+				box1.getCenter(),
+			];
+		var polyline = L.polyline(latlngs, {color: 'black'}).addTo(mymap);
 
 		// NEEDS TO BE SPLIT OUT
 		var myIcon = L.divIcon({className: 'my-div-icon', html: "STRRRRNG"});
 		// you can set .my-div-icon styles in CSS
-		L.marker([box.getLatLngs()[0][0].lat, box.getLatLngs()[0][0].lng], {icon: myIcon}).addTo(mymap);
+		L.marker(box.getCenter(), {icon: myIcon}).addTo(mymap);
 	}
 
 	function drawRectangle(bounds) {
@@ -116,8 +99,8 @@
 		box.attributes.freeFormX = (mymap.project(box.getCenter()).x); // not pixel X (map X)
 		box.attributes.freeFormY = (mymap.project(box.getCenter()).y);
 		// 2X2 attributes (x, y axes)
-		box.attributes.effort =  Math.random() * 100;
-		box.attributes.value = Math.random() * 100;
+		box.attributes.effort =  Math.random() * 90;
+		box.attributes.value = Math.random() * 90;
 		// Aging (horizontally)
 		box.attributes.daysOld = Math.random() * 365;
 		// Sort by Story Size (vertically)
@@ -140,13 +123,13 @@
 			if(!layer.attributes || (layer.attributes && !layer.attributes.freeFormX)) {
 				return true
 			}
-			// EFFORT / VALUE
+			// use the X & Y coordinates from the FreeFrom `Space`
 			var point = L.point(layer.attributes.freeFormX, layer.attributes.freeFormY)
-
 			var lat = mymap.unproject(point, mymap.getZoom()).lat;
 			var lng = mymap.unproject(point, mymap.getZoom()).lng;
-			console.log(lat, lng)
-			var bounds = [[lat, lng], [lat + 5, lng + 5]];
+
+			var xpoint = L.latLng(lat, lng);
+			var bounds = dynamicBounds(xpoint);
 			layer.setBounds(bounds);
 		})
 	}
@@ -159,7 +142,19 @@
 				return true
 			}
 			// EFFORT / VALUE
-			var bounds = [[layer.attributes.effort, layer.attributes.value], [layer.attributes.effort + 5, layer.attributes.value + 5]];
+			// TRANSLATE to x/y coords
+			// for x within 0-100
+			// translate to where X falls with 0-screen-width - using D3 range
+			var xAxis = d3.scaleLinear().domain([0, 100]).range([0, mapWidth]);
+			var yAxis = d3.scaleLinear().domain([0, 100]).range([0, mapHeight]);
+			var x = xAxis(layer.attributes.effort); // returns x pixel location
+			var y = yAxis(layer.attributes.value); // returns x pixel location
+			// var y = mymap.project(mymap.getCenter()).y; // returns y pixel of the map (height of midpoint)
+
+			var point = mymap.unproject(L.point(x, y), mymap.getZoom());
+
+			// console.log("ZZ", layer.attributes.effort, z);
+			var bounds = dynamicBounds(point);
 			layer.setBounds(bounds);
 		})
 	}
@@ -172,13 +167,16 @@
 			if(!layer.attributes) {
 				return true
 			}
+			var yAxis = d3.scaleLinear().domain([0, 100]).range([0, mapHeight]);
 			// translate days old into vertical coordinates
 			function translateCoords(days) { // accepts days 0 - 365
 				return 365 / days;
 			}
-			var x = translateCoords(layer.attributes.daysOld)
-			var y = mymap.getCenter().lng + (i * 7);
-			var bounds = [[x, y], [x + 5, y + 5]];
+			var y = yAxis(layer.attributes.daysOld)
+			var x = mymap.project(mymap.getCenter()).x;
+
+			var point = mymap.unproject(L.point(x, y), mymap.getZoom());
+			var bounds = dynamicBounds(point);
 			layer.setBounds(bounds);
 		})
 	}
@@ -186,7 +184,6 @@
 	function drawSizeSort() {
 		// for each Rectangle
 		// re-draw based on effort/value functional coordinates...
-		var mapWidth = $("#mapid").width();
 		var xAxis = d3.scaleLinear().domain([0, 365]).range([0, mapWidth]);
 
 		mymap.eachLayer(function(layer) {
@@ -195,18 +192,14 @@
 			}
 
 			// Translate Age to range. Maybe D3?
-			// Create the Axes range using fancy D3
-			// Days Min/Max
-			var effort = layer.attributes.effort;
-			var x = xAxis(effort);
+			var xAxis = d3.scaleLinear().domain([0, 10]).range([0, mapHeight]);
+			var storySize = layer.attributes.storySize;
+			var x = xAxis(storySize);
+			var y = mymap.project(mymap.getCenter()).y;
 
-			// Boundaries of the map
-			mymap.getBounds().getNorthEast();
-			mymap.getBounds().getSouthWest();
-
-			// Age
-			// var bounds = [[layer.attributes.effort, layer.attributes.value], [layer.attributes.effort + 5, layer.attributes.value + 5]];
-			// layer.setBounds(bounds);
+			var point = mymap.unproject(L.point(x, y), mymap.getZoom());
+			var bounds = dynamicBounds(point);
+			layer.setBounds(bounds);
 		})
 	}
 
@@ -229,14 +222,21 @@
 		$("#drawFreeForm").on("click", function() {
 			drawFreeForm();
 		});
+
+		mapWidth = $("#mapid").width();
+		mapHeight = $("#mapid").height();
 	});
+
+	// Globals
+	var mapWidth;
+	var mapHeight;
 </script>
 
 	<div class="bottom-drawer">
+		<a href="#" id="drawFreeForm">Free Form</a> &middot;
 		<a href="#" id="draw2x2">Draw 2X2</a> &middot;
-		<a href="#" id="drawAgeSort">Sort by Age</a> &middot;
 		<a href="#" id="drawSizeSort">Sort by Size</a> &middot;
-		<a href="#" id="drawFreeForm">Free Form</a>
+		<a href="#" id="drawAgeSort">Sort by Age</a>
 	</div>
 </body>
 </html>
