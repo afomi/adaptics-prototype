@@ -1,0 +1,3 @@
+# Adaptics
+
+Non-geographical maps.
