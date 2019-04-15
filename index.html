@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
 	<script src="https://d3js.org/d3.v4.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
 	<style media="screen">
 		html, body {
 			height: 100%
@@ -140,8 +141,7 @@
 				return true;
 			}
 			// use the coordinates from the FreeFrom `Space`
-			var bounds = dynamicBounds(layer.attributes.location);
-			layer.setBounds(bounds);
+			tweenPoly(layer, layer.attributes.location);
 		})
 	}
 
@@ -175,8 +175,7 @@
 			var x = xAxis(layer.attributes.effort);
 			var y = yAxis(layer.attributes.businessValue);
 			var point = mymap.layerPointToLatLng(L.point(x, y));
-			var boundsX = dynamicBounds(point);
-			layer.setBounds(boundsX);
+			tweenPoly(layer, point);
 		})
 	}
 
@@ -190,8 +189,7 @@
 			var x = mymap.latLngToLayerPoint(mymap.getCenter()).x;
 			var y = yAxis(layer.attributes.daysOld);
 			var point = mymap.layerPointToLatLng(L.point(x, y));
-			var bounds = dynamicBounds(point);
-			layer.setBounds(bounds);
+			tweenPoly(layer, point);
 		})
 	}
 
@@ -208,9 +206,29 @@
 			var x = xAxis(storySize);
 			var y = mymap.latLngToLayerPoint(mymap.getCenter()).y;
 			var point = mymap.layerPointToLatLng(L.point(x, y));
-			var bounds = dynamicBounds(point);
-			layer.setBounds(bounds);
+			tweenPoly(layer, point);
 		})
+	}
+
+	function tweenPoly(layer, targetLatLng) {
+		var x = mymap.latLngToLayerPoint(layer.getCenter()).x;
+		var y = mymap.latLngToLayerPoint(layer.getCenter()).y;
+
+		var targetX = mymap.latLngToLayerPoint(targetLatLng).x;
+		var targetY = mymap.latLngToLayerPoint(targetLatLng).y;
+
+		var coords = { x: x, y: y }; // Start at (0, 0)
+		var tween = new TWEEN.Tween(coords) // Create a new tween that modifies 'coords'.
+      .to({ x: targetX, y: targetY }, 1000)
+      .easing(TWEEN.Easing.Quadratic.Out) // Use an easing function to make the animation smooth.
+      .onUpdate(function() { // Called after tween.js updates 'coords'.
+					var x = coords.x;
+					var y = coords.y;
+					var point = mymap.layerPointToLatLng(L.point(x, y));
+					var bounds = dynamicBounds(point);
+					layer.setBounds(bounds);
+      })
+      .start();
 	}
 
 	// DUMMY UP SOME OBJECTS
@@ -237,6 +255,12 @@
 
 		mapWidth = $("#mapid").width();
 		mapHeight = $("#mapid").height();
+
+		function animate(time) {
+		    requestAnimationFrame(animate);
+		    TWEEN.update(time);
+		}
+		requestAnimationFrame(animate);
 	});
 
 	// Globals
@@ -247,8 +271,8 @@
 	<div class="bottom-drawer">
 		<a href="#" id="drawFreeForm">Free Form</a> &middot;
 		<a href="#" id="draw2x2">Draw 2X2</a> &middot;
-		<a href="#" id="drawSizeSort">Sort by Size</a> &middot;
-		<a href="#" id="drawAgeSort">Sort by Age</a>
+		<a href="#" id="drawSizeSort">Horizontal Sort by Size</a> &middot;
+		<a href="#" id="drawAgeSort">Vertical Sort by Age</a>
 	</div>
 </body>
 </html>
