@@ -8,271 +8,31 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
+	<style media="screen">
+	html, body {
+		height: 100%
+	}
+
+	.bottom-drawer {
+		height: 75px;
+	}
+	</style>
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
 	<script src="https://d3js.org/d3.v4.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
-	<style media="screen">
-		html, body {
-			height: 100%
-		}
-
-		.bottom-drawer {
-			height: 75px;
-		}
-	</style>
+	<script
+	src="https://code.jquery.com/jquery-3.4.0.slim.js"
+	integrity="sha256-milezx5lakrZu0OP9b2QWFy1ft/UEUK6NH1Jqz8hUhQ="
+	crossorigin="anonymous"></script>
 </head>
 <body>
 <div id="mapid" style="width: 100%; height: calc(100% - 75px)"></div>
-<script
-  src="https://code.jquery.com/jquery-3.4.0.slim.js"
-  integrity="sha256-milezx5lakrZu0OP9b2QWFy1ft/UEUK6NH1Jqz8hUhQ="
-  crossorigin="anonymous"></script>
-<script>
-	var defaultZoom = 12;
-	var mymap = L.map('mapid', {
-		zoomControl: false,
-		crs: L.CRS.Simple
-	}).setView([51.505, 0], defaultZoom);
-	mymap.scrollWheelZoom.disable();
-
-	function resetZoom() {
-		mymap.setZoom(defaultZoom);
-	}
-
-	// takes a L.LatLng
-	// returns Bounds [L.LatLng, L.LatLng]
-	//   with an offset based on visual pixels
-	function dynamicBounds(originLatLng) {
-		var cardDimensionsAsPx = 30;
-		var originPoint = mymap.project(originLatLng, mymap.getZoom());
-		var targetPoint = L.point(originPoint.x + cardDimensionsAsPx, originPoint.y + cardDimensionsAsPx);
-		var targetLatLng = mymap.unproject(targetPoint, mymap.getZoom());
-		var bounds = L.latLngBounds(originLatLng, targetLatLng);
-		return bounds;
-	}
-
-	// Create an orange rectangle in the center of the map
-	function drawCenterPoint() {
-		var center = mymap.getCenter();
-		var bounds = dynamicBounds(center);
-		var box1 = L.rectangle(bounds, {color: "#ff0000", weight: 1}).addTo(mymap);
-	}
-
-	var popup = L.popup();
-	function onMapClick(e) {
-		popup
-			.setLatLng(e.latlng)
-			.setContent("You clicked the map at " + e.latlng.toString())
-			.openOn(mymap);
-	}
-
-	mymap.on('click', onMapClick);
-	mymap.on('resize', function(e) {
-		mapHeight = $("#mapid").height();
-		mapWidth = $("#mapid").width();
-	});
-	mymap.on("click", function(e) {
-		clickHandler(e);
-	})
-
-	function clickHandler(e) {
-		var lat = e.latlng.lat;
-		var lng = e.latlng.lng;
-		var xpoint = L.latLng(lat, lng);
-		var bounds = dynamicBounds(xpoint);
-		drawRectangle(bounds)
-	}
-
-	// Draw a line between this rectangle and Box1
-	function drawLineToBox1(box) {
-		// draw a polyline between the centers of box1 and box
-		var latlngs = [
-			box.getCenter(),
-			box1.getCenter(),
-		];
-		var polyline = L.polyline(latlngs, {color: 'black'}).addTo(mymap);
-
-		// NEEDS TO BE SPLIT OUT
-		var myIcon = L.divIcon({className: 'my-div-icon', html: "EFFORT=" + box.attributes.effort + " VALUE=" + box.attributes.businessValue + " DAYSOLD= " + box.attributes.daysOld});
-		// you can set .my-div-icon styles in CSS
-		L.marker(box.getCenter(), {icon: myIcon}).addTo(mymap);
-	}
-
-	function drawRectangle(bounds) {
-		// create an orange rectangle
-		var box = L.rectangle(bounds, {color: "#ff7800", weight: 1}).addTo(mymap);
-		box.attributes = {};
-		// free form
-		box.attributes.freeFormX = (mymap.project(box.getCenter()).x, mymap.getZoom()); // not pixel X (map X)
-		box.attributes.freeFormY = (mymap.project(box.getCenter()).y, mymap.getZoom());
-		box.attributes.location = box.getCenter();
-		// 2X2 attributes (x, y axes)
-		box.attributes.effort =  parseInt(Math.random() * 90);
-		box.attributes.businessValue = parseInt(Math.random() * 90);
-		// Aging (horizontally)
-		box.attributes.daysOld = parseInt(Math.random() * 365);
-		// Sort by Story Size (vertically)
-		box.attributes.storySize = parseInt(Math.random() * 10);
-		box.attributes.storySize = parseFloat(Math.random() * 10).toFixed(2);
-
-		box.on("mouseover", function(e) {
-			popup
-				.setLatLng(e.latlng)
-				.setContent("DAYS OLD " + e.target.attributes.daysOld + "STORY SIZE=" + e.target.attributes.storySize + "EFFORT=" + e.target.attributes.effort + "businessValue=" + e.target.attributes.businessValue)
-				.openOn(mymap);
-		})
-
-
-		// drawLineToBox1(box);
-	}
-
-	// Set the Space type...
-
-	// TRIGGER 2X2
-	// TRIGGER SIZE SORT
-	// TRIGGER AGE SORT
-	// TRIGGER FREE FORM
-
-	// re-draw each Rectangle based on map coords
-	function drawFreeForm() {
-		resetZoom();
-		mymap.eachLayer(function(layer) {
-			if(!layer.attributes || (layer.attributes && !layer.attributes.location)) {
-				return true;
-			}
-			// use the coordinates from the FreeFrom `Space`
-			tweenPoly(layer, layer.attributes.location);
-		})
-	}
-
-	function draw2x2Background() {
-		var northPoint = L.latLng(mymap.getBounds().getNorth(), mymap.getCenter().lng);
-		var southPoint = L.latLng(mymap.getBounds().getSouth(), mymap.getCenter().lng);
-		var westPoint = L.latLng(mymap.getCenter().lat, mymap.getBounds().getWest());
-		var eastPoint = L.latLng(mymap.getCenter().lat, mymap.getBounds().getEast());
-		var latlngs = [
-			northPoint,
-			southPoint,
-		];
-		var latlngs2 = [
-			westPoint,
-			eastPoint,
-		];
-		var xAxis = L.polyline(latlngs, {color: 'green'}).addTo(mymap);
-		var yAxis = L.polyline(latlngs2, {color: 'green'}).addTo(mymap);
-	}
-
-	// re-draw each Rectangle based on Effort/Value functional coordinates
-	function draw2x2() {
-		draw2x2Background();
-
-		mymap.eachLayer(function(layer) {
-			if(!layer.attributes) {
-				return true;
-			}
-			var xAxis = d3.scaleLinear().domain([0, 100]).range([0, mapWidth]);
-			var yAxis = d3.scaleLinear().domain([100, 0]).range([0, mapHeight]);
-			var x = xAxis(layer.attributes.effort);
-			var y = yAxis(layer.attributes.businessValue);
-			var point = mymap.layerPointToLatLng(L.point(x, y));
-			tweenPoly(layer, point);
-		})
-	}
-
-	// re-draw each Rectangle based on daysOld
-	function drawAgeSort() {
-		mymap.eachLayer(function(layer) {
-			if(!layer.attributes || layer.attributes && !layer.attributes.daysOld) {
-				return true;
-			}
-			var yAxis = d3.scaleLinear().domain([0, 365]).range([0, mapHeight]);
-			var x = mymap.latLngToLayerPoint(mymap.getCenter()).x;
-			var y = yAxis(layer.attributes.daysOld);
-			var point = mymap.layerPointToLatLng(L.point(x, y));
-			tweenPoly(layer, point);
-		})
-	}
-
-	// re-draw each Rectangle based on storySize
-	function drawSizeSort() {
-		var xAxis = d3.scaleLinear().domain([0, 10]).range([0, mapWidth]);
-
-		mymap.eachLayer(function(layer) {
-			if(!layer.attributes) {
-				return true;
-			}
-
-			var storySize = layer.attributes.storySize;
-			var x = xAxis(storySize);
-			var y = mymap.latLngToLayerPoint(mymap.getCenter()).y;
-			var point = mymap.layerPointToLatLng(L.point(x, y));
-			tweenPoly(layer, point);
-		})
-	}
-
-	function tweenPoly(layer, targetLatLng) {
-		var x = mymap.latLngToLayerPoint(layer.getCenter()).x;
-		var y = mymap.latLngToLayerPoint(layer.getCenter()).y;
-
-		var targetX = mymap.latLngToLayerPoint(targetLatLng).x;
-		var targetY = mymap.latLngToLayerPoint(targetLatLng).y;
-
-		var coords = { x: x, y: y }; // Start at (0, 0)
-		var tween = new TWEEN.Tween(coords) // Create a new tween that modifies 'coords'.
-      .to({ x: targetX, y: targetY }, 1000)
-      .easing(TWEEN.Easing.Quadratic.Out) // Use an easing function to make the animation smooth.
-      .onUpdate(function() { // Called after tween.js updates 'coords'.
-					var x = coords.x;
-					var y = coords.y;
-					var point = mymap.layerPointToLatLng(L.point(x, y));
-					var bounds = dynamicBounds(point);
-					layer.setBounds(bounds);
-      })
-      .start();
-	}
-
-	// DUMMY UP SOME OBJECTS
-	// for(var i=0; i < 10; i++) {
-	// 	var bounds = [[54.559322, -5.767822 + Math.random() * 5], [56.1210604, -3.021240 +  Math.random() * 5]];
-	// 	drawRectangle(bounds);
-	// }
-
-	// On Page Load
-	$(function() {
-		// Add button behaviors
-		$("#draw2x2").on("click", function() {
-			draw2x2();
-		});
-		$("#drawAgeSort").on("click", function() {
-			drawAgeSort();
-		});
-		$("#drawSizeSort").on("click", function() {
-			drawSizeSort();
-		});
-		$("#drawFreeForm").on("click", function() {
-			drawFreeForm();
-		});
-
-		mapWidth = $("#mapid").width();
-		mapHeight = $("#mapid").height();
-
-		function animate(time) {
-		    requestAnimationFrame(animate);
-		    TWEEN.update(time);
-		}
-		requestAnimationFrame(animate);
-	});
-
-	// Globals
-	var mapWidth;
-	var mapHeight;
-</script>
-
 	<div class="bottom-drawer">
 		<a href="#" id="drawFreeForm">Free Form</a> &middot;
 		<a href="#" id="draw2x2">Draw 2X2</a> &middot;
 		<a href="#" id="drawSizeSort">Horizontal Sort by Size</a> &middot;
 		<a href="#" id="drawAgeSort">Vertical Sort by Age</a>
 	</div>
+	<script src="/assets/app.js"></script>
 </body>
 </html>
