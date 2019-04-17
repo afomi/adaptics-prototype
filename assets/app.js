@@ -89,7 +89,7 @@ function drawLineToBox1(box) {
 
 function drawRectangle(bounds) {
   // create an orange rectangle
-  var box = L.rectangle(bounds, {color: "#ff7800", weight: 1}).addTo(mymap);
+  var box = L.rectangle(bounds, {color: "#ff7800", weight: 1, draggable: true }).addTo(mymap);
   console.log("drawRectangle", bounds);
   cardsLayerGroup.addLayer(box);
   // debugger;
@@ -108,35 +108,16 @@ function drawRectangle(bounds) {
   box.attributes.storySize = parseInt(Math.random() * 10);
   box.attributes.storySize = parseFloat(Math.random() * 10).toFixed(2);
 
-  var draggable = new L.Draggable(box.getElement(), box.getElement());
-  draggable.enable();
-
-  draggable.on("dragend", function (e) {
-    // on mouse up, capture the xy of the screen
-    // move the dragged rectangle to the xy spot on the screen
-    debugger;
-    console.log("DRAG END", e);
-  });
+  box.on('dragstart', function() { console.log("drag start"); })
+    .on('drag', function() { console.log("drag"); })
+    .on('dragend', function(e) {
+      e.target.attributes.location = e.target.getCenter();
+    });
 
   // Prevent the event from Propagating, so Map Click handler doesn't also fire
   box.on("mousedown", function(e) {
     L.DomEvent.stopPropagation(e);
   });
-
-  // box.on("mouseup", function (e) {
-  // 	// find the point i clicked
-  // 	// translate that to px
-  // 	// e.target.attributes.location = e.target.getCenter();
-  // 	// e.target.attributes.location = e.target.getCenter();
-  // 	// debugger;
-  // 	// e.target.
-  // 	// var point = mymap.layerPointToLatLng(L.point(e.layerPoint.x, e.layerPoint.y));
-  //
-  // 	L.DomUtil.setPosition(e.target.getElement(), L.point(e.target.attributes.freeFormX, e.target.attributes.freeFormY));
-  // 	var point = mymap.layerPointToLatLng(L.point(e.layerPoint.x - 17, e.layerPoint.y - 17));
-  // 	tweenPoly(e.target, point)
-  // 	console.log("MOUSEUP", e);
-  // });
 
   box.on("mouseover", function(e) {
     popup
@@ -303,4 +284,5 @@ $(function() {
 var mapWidth;
 var mapHeight;
 var cardDimensionsAsPx = 30;
+var halfCardWidth = cardDimensionsAsPx / 2;
 var cardOffsetPx = cardDimensionsAsPx + 4;
