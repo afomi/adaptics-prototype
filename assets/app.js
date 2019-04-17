@@ -108,15 +108,44 @@ function drawRectangle(bounds) {
   box.attributes.storySize = parseInt(Math.random() * 10);
   box.attributes.storySize = parseFloat(Math.random() * 10).toFixed(2);
 
-  var draggable = new L.Draggable(box.getElement(), box.getElement());
+  var draggableCopy = L.rectangle(bounds, {color: "#blue", weight: 1}).addTo(mymap);;
+  draggableCopy.on("mousedown", function(e) {
+    L.DomEvent.stopPropagation(e);
+  });
+  var draggable = new L.Draggable(draggableCopy.getElement(), draggableCopy.getElement());
   draggable.enable();
 
+  draggable.on("drag", function (e) {
+    // position the floaty centered over the mouse cursor
+    // debugger
+    console.log("dragging", e);
+
+  });
+  draggableCopy.on('mousemove', function(e) {
+    var point = L.point(e.layerPoint.x, e.layerPoint.y);
+    // var point = L.point(0, 0);
+    var latlng = mymap.layerPointToLatLng(point);
+    // L.DomUtil.setPosition(draggableCopy.getElement(), point);
+    // L.DomUtil.setPosition(draggableCopy.getElement(), point);
+  })
   draggable.on("dragend", function (e) {
     // on mouse up, capture the xy of the screen
     // move the dragged rectangle to the xy spot on the screen
-    debugger;
+    // debugger;
+
     console.log("DRAG END", e);
   });
+  draggableCopy.on('mousedown', function() {
+    draggableCopy.on('mouseup', function(e) {
+      console.log(e)
+      // TODO: improve the accuracy of
+      // var point = L.point(e.containerPoint.x - halfCardWidth, e.containerPoint.y - halfCardWidth);
+      var point = L.point(e.layerPoint.x - halfCardWidth, e.layerPoint.y - halfCardWidth);
+      var latlng = mymap.containerPointToLatLng(point);
+      box.setBounds(dynamicBounds(latlng));
+    })
+  })
+
 
   // Prevent the event from Propagating, so Map Click handler doesn't also fire
   box.on("mousedown", function(e) {
@@ -138,6 +167,15 @@ function drawRectangle(bounds) {
   // 	console.log("MOUSEUP", e);
   // });
 
+  box.on('mouseup', function(e) {
+    var point = L.point(e.containerPoint.x, e.containerPoint.y);
+    var latlng = mymap.containerPointToLatLng(point);
+    // Reset card back to regular map position
+    // Then animate/move the map to where the card was placed.
+    // *** this feels *** like we're moving a Map Layer incorrectly
+
+    console.log(e, point, latlng);
+  });
   box.on("mouseover", function(e) {
     popup
       .setLatLng(L.latLng(e.target.getBounds().getNorth(), e.target.getCenter().lng))
@@ -303,4 +341,6 @@ $(function() {
 var mapWidth;
 var mapHeight;
 var cardDimensionsAsPx = 30;
+var halfCardWidth = cardDimensionsAsPx / 2;
 var cardOffsetPx = cardDimensionsAsPx + 4;
+
